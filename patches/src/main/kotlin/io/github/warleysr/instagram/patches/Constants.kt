@@ -21,6 +21,9 @@ object Constants {
                                 ARM64_V8A to 384510827,
                             ),
                     ),
+                    AppTarget(
+                        version = "447.0.0.55.81",
+                    ),
                 ),
         )
 

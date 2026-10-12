@@ -87,12 +87,11 @@ internal object ReboundViewPagerSmoothScrollFingerprint : Fingerprint(
     filters =
         listOf(
             opcode(Opcode.INT_TO_FLOAT),
-            literal(1, location = InstructionLocation.MatchAfterWithin(2)),
             methodCall(
                 definingClass = REBOUND_VIEW_PAGER_CLASS,
                 parameters = listOf(REBOUND_VIEW_PAGER_CLASS, "D", "F", "Z"),
                 returnType = "V",
-                location = InstructionLocation.MatchAfterImmediately(),
+                location = InstructionLocation.MatchAfterWithin(4),
             ),
         ),
 )

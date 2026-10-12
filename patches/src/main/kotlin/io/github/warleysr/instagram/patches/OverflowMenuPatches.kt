@@ -99,6 +99,7 @@ val hookOverflowMenuButton =
     ) {
         dependsOn(includeButtonsInOverflowMenuArrayPatch, hookOverflowMenuButtonOnClickPatch)
         compatibleWith(COMPATIBILITY_INSTAGRAM)
+        extendWith(io.github.warleysr.instagram.patches.Constants.EXTENSION_PATH)
         execute {
             val enumBtnClass = classNameToExtension(EnumButtonClassFingerprint.classDef.type)
             GetEnumButtonClassExtensionFingerprint.changeFirstString(enumBtnClass)

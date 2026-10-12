@@ -3,12 +3,9 @@ package io.github.warleysr.instagram.patches
 import io.github.warleysr.instagram.patches.Constants.COMPATIBILITY_INSTAGRAM
 import io.github.warleysr.instagram.patches.Constants.EXTENSION_PATH
 import io.github.warleysr.instagram.patches.Constants.KEEP_SCREEN_ON_EXTENSION_CLASS
-import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.InstructionLocation
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
-import app.morphe.patcher.fieldAccess
-import app.morphe.patcher.literal
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.util.getReference
 import com.android.tools.smali.dexlib2.Opcode
@@ -44,35 +41,23 @@ val keepScreenOnWhilePlayingPatch =
             val playerClass = setKeepScreenOnMethod.parameterTypes[0].toString()
 
             // Completion callback of the player controller, which reads the looping flag of the player:
-            //
-            //   iget-object v0, v2, Controller;->player:Player;
-            //   iget-object v0, v0, Player;->config:Config;
-            //   iget-boolean v0, v0, Config;->isLooping:Z
-            //   const/16 v1, 0x3a
-            val loopingFingerprint =
-                Fingerprint(
-                    returnType = "V",
-                    parameters = listOf("J"),
-                    filters =
-                        listOf(
-                            fieldAccess(type = playerClass, opcode = Opcode.IGET_OBJECT),
-                            fieldAccess(
-                                definingClass = playerClass,
-                                opcode = Opcode.IGET_OBJECT,
-                                location = InstructionLocation.MatchAfterImmediately(),
-                            ),
-                            fieldAccess(
-                                type = "Z",
-                                opcode = Opcode.IGET_BOOLEAN,
-                                location = InstructionLocation.MatchAfterImmediately(),
-                            ),
-                            literal(0x3a, location = InstructionLocation.MatchAfterImmediately()),
-                        ),
-                )
+            //   iget-object v0, Player;->config:Config;
+            //   iget-boolean v0, Config;->isLooping:Z
             val (configField, loopingField) =
-                loopingFingerprint.instructionMatches.let { matches ->
-                    matches[1].instruction.getReference<FieldReference>()!! to
-                        matches[2].instruction.getReference<FieldReference>()!!
+                VideoCompletionFingerprint.method.let { method ->
+                    val methodInstructions = method.instructions
+                    val booleanFields = methodInstructions
+                        .filter { it.opcode == Opcode.IGET_BOOLEAN }
+                        .mapNotNull { it.getReference<FieldReference>() }
+
+                    val configMatch = methodInstructions.first { inst ->
+                        if (inst.opcode != Opcode.IGET_OBJECT) return@first false
+                        val fieldRef = inst.getReference<FieldReference>() ?: return@first false
+                        fieldRef.definingClass == playerClass && booleanFields.any { it.definingClass == fieldRef.type }
+                    }
+                    val configFieldRef = configMatch.getReference<FieldReference>()!!
+                    val loopingFieldRef = booleanFields.first { it.definingClass == configFieldRef.type }
+                    configFieldRef to loopingFieldRef
                 }
 
             VideoCompletionFingerprint.method.apply {
