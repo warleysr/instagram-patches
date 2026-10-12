@@ -1,6 +1,6 @@
 {
-  "created_at": "2026-10-12T18:00:00",
-  "description": "## Instagram Patches\n\n### Keep screen on while playing video\nKeeps the screen on while a video is playing in the feed, stories and other places, like in Reels.\n\n### Carousel auto scroll\nFeed carousels move to the next item on their own when a video ends.\nImages in between are shown for 5 seconds.\nTurned on and off from the post ⋯ menu (off by default).\n\nTested on Instagram 439.0.0.37.89 (arm64-v8a).",
+  "created_at": "2026-10-12T21:59:19",
+  "description": "Build of `90358331ccc5f2b2bc6858080cd6c3abf8a75cea` from run https://github.com/warleysr/instagram-patches/actions/runs/38313876482.",
   "download_url": "https://github.com/warleysr/instagram-patches/releases/download/v1.0.0/patches-1.0.0.mpp",
   "version": "1.0.0"
 }
