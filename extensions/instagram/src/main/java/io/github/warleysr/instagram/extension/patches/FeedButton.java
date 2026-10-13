@@ -55,18 +55,23 @@ public class FeedButton {
 
     public static void addFeedOverflowButton(Object buttonAdderObject, ArrayList buttonlist) {
         try {
+            Log.d(TAG, "addFeedOverflowButton called, list size=" + (buttonlist != null ? buttonlist.size() : "null"));
             addButton(MediaOption$Option.CAROUSEL_AUTO_SCROLL, CarouselAutoScrollPatch.menuTitle(), buttonAdderObject, buttonlist);
+            Log.d(TAG, "addFeedOverflowButton success");
         } catch (Exception e) {
             Log.e(TAG, "Error in addFeedOverflowButton", e);
         }
     }
 
     public static boolean onButtonClicked(MediaOption$Option pressedButton) {
+        Log.i(TAG, "onButtonClicked called with: " + pressedButton);
         if (pressedButton != null && "CAROUSEL_AUTO_SCROLL".equals(pressedButton.toString())) {
+            Log.i(TAG, "Matching button string CAROUSEL_AUTO_SCROLL, calling toggle()");
             CarouselAutoScrollPatch.toggle();
             return true;
         }
         if (MediaOption$Option.CAROUSEL_AUTO_SCROLL.equals(pressedButton)) {
+            Log.i(TAG, "Matching button enum CAROUSEL_AUTO_SCROLL, calling toggle()");
             CarouselAutoScrollPatch.toggle();
             return true;
         }

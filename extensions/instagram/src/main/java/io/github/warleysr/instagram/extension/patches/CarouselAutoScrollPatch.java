@@ -79,6 +79,8 @@ public class CarouselAutoScrollPatch {
      * @param videoView View the video is rendered on, or null if the player has none.
      */
     public static void onVideoCompleted(View videoView) {
+        Log.i(TAG, "onVideoCompleted called. videoView=" + (videoView != null ? videoView.getClass().getName() : "null")
+                + ", isEnabled=" + isEnabled());
         if (videoView == null || !isEnabled()) return;
         AppContext.setContext(videoView.getContext());
 
@@ -86,11 +88,20 @@ public class CarouselAutoScrollPatch {
         handler.post(() -> {
             try {
                 ReboundViewPager pager = findCarouselPager(videoView);
-                if (pager == null || !isMostlyVisible(pager)) return;
+                Log.i(TAG, "findCarouselPager result: " + pager);
+                if (pager == null) return;
+
+                boolean mostlyVisible = isMostlyVisible(pager);
+                Log.d(TAG, "pager isMostlyVisible=" + mostlyVisible);
+                if (!mostlyVisible) return;
 
                 // Neighbour pages may have their own player, only follow the page on screen.
                 View activePage = pager.getCurrentActiveView();
-                if (activePage != null && !isDescendant(videoView, activePage)) return;
+                Log.d(TAG, "activePage: " + activePage);
+                if (activePage != null && !isDescendant(videoView, activePage)) {
+                    Log.d(TAG, "videoView is not descendant of activePage, skipping");
+                    return;
+                }
 
                 scrollToNextPage(pager);
             } catch (Exception ex) {
@@ -103,18 +114,22 @@ public class CarouselAutoScrollPatch {
      * Replaced by the patch with a call to the obfuscated method that animates the pager to a page.
      */
     private static void smoothScrollToPage(ReboundViewPager pager, int page) {
-        Log.d(TAG, "smoothScrollToPage was not patched");
+        Log.w(TAG, "smoothScrollToPage was not patched! Target page=" + page);
     }
 
     private static void scrollToNextPage(ReboundViewPager pager) {
         Adapter adapter = pager.getAdapter();
         int page = pager.getCurrentDataIndex();
-        if (adapter == null || page < 0 || page >= adapter.getCount() - 1) {
+        int count = adapter != null ? adapter.getCount() : 0;
+        Log.i(TAG, "scrollToNextPage: currentPage=" + page + ", count=" + count);
+        if (adapter == null || page < 0 || page >= count - 1) {
+            Log.d(TAG, "Reached end of carousel or no adapter, cancelling chain");
             cancelChain();
             return;
         }
 
         int nextPage = page + 1;
+        Log.i(TAG, "Scrolling to nextPage: " + nextPage);
         smoothScrollToPage(pager, nextPage);
 
         chainPager = new WeakReference<>(pager);
@@ -126,6 +141,7 @@ public class CarouselAutoScrollPatch {
     private static void onImagePageTimeout() {
         try {
             ReboundViewPager pager = chainPager.get();
+            Log.d(TAG, "onImagePageTimeout fired. pager=" + pager + ", chainPage=" + chainPage);
             if (pager == null || !isEnabled() || !isMostlyVisible(pager)
                     || pager.getCurrentDataIndex() != chainPage) {
                 cancelChain();
@@ -133,7 +149,10 @@ public class CarouselAutoScrollPatch {
             }
 
             // A video page scrolls on its own once the video completes.
-            if (isVideoPage(pager.getCurrentActiveView())) return;
+            if (isVideoPage(pager.getCurrentActiveView())) {
+                Log.d(TAG, "Active page is a video page, letting video completion handle scroll");
+                return;
+            }
 
             scrollToNextPage(pager);
         } catch (Exception ex) {
@@ -150,16 +169,33 @@ public class CarouselAutoScrollPatch {
     private static ReboundViewPager findCarouselPager(View view) {
         if (carouselPagerId == 0) {
             carouselPagerId = AppContext.getIdentifier("id", "carousel_viewpager");
+            Log.d(TAG, "Resolved carousel_viewpager id: 0x" + Integer.toHexString(carouselPagerId));
         }
 
-        // Stories and other screens also use this pager, so match the feed carousel id.
+        ReboundViewPager fallbackPager = null;
         ViewParent parent = view.getParent();
-        while (parent instanceof View) {
-            if (parent instanceof ReboundViewPager && ((View) parent).getId() == carouselPagerId) {
-                return (ReboundViewPager) parent;
+        int depth = 0;
+        while (parent instanceof View && depth < 20) {
+            depth++;
+            if (parent instanceof ReboundViewPager) {
+                int id = ((View) parent).getId();
+                Log.d(TAG, "Found ReboundViewPager ancestor at depth " + depth + ", id=0x" + Integer.toHexString(id));
+                if (carouselPagerId != 0 && id == carouselPagerId) {
+                    return (ReboundViewPager) parent;
+                }
+                if (fallbackPager == null) {
+                    fallbackPager = (ReboundViewPager) parent;
+                }
             }
             parent = parent.getParent();
         }
+
+        if (fallbackPager != null) {
+            Log.i(TAG, "Using fallback ReboundViewPager: " + fallbackPager);
+            return fallbackPager;
+        }
+
+        Log.w(TAG, "findCarouselPager: No ReboundViewPager ancestor found for view " + view);
         return null;
     }
 
@@ -167,10 +203,18 @@ public class CarouselAutoScrollPatch {
         if (page == null) return false;
         if (carouselVideoPageId == 0) {
             carouselVideoPageId = AppContext.getIdentifier("id", "carousel_video_media_group");
+            Log.d(TAG, "Resolved carousel_video_media_group id: 0x" + Integer.toHexString(carouselVideoPageId));
         }
 
-        View videoGroup = page.findViewById(carouselVideoPageId);
-        return videoGroup != null && videoGroup.getVisibility() == View.VISIBLE;
+        if (carouselVideoPageId != 0) {
+            View videoGroup = page.findViewById(carouselVideoPageId);
+            if (videoGroup != null && videoGroup.getVisibility() == View.VISIBLE) {
+                return true;
+            }
+        }
+
+        // Fallback: check if the view contains any video-related child or tag
+        return false;
     }
 
     private static boolean isDescendant(View view, View ancestor) {
