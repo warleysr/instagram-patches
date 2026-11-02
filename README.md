@@ -4,7 +4,7 @@ Custom Morphe patches for Instagram:
 - **Keep screen on while playing video**: Keeps the screen on while a video is playing in the feed, stories and other places, like in Reels.
 - **Carousel auto scroll**: Scrolls a feed carousel to the next item when a video completes. Images reached this way stay for 5 seconds. Can be turned on/off from the post **⋯** menu (**Carousel auto scroll: on/off**).
 
-Target Instagram version: **439.0.0.37.89** (arm64-v8a).
+Target Instagram versions: **439.0.0.37.89**, **447.0.0.55.81**, **452.1.0.53.64**.
 
 ## Using with Morphe Manager
 
