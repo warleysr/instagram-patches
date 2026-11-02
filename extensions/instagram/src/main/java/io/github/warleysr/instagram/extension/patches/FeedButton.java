@@ -18,16 +18,30 @@ public class FeedButton {
         return new MediaOption$Option("CAROUSEL_AUTO_SCROLL", 504, drawableIconId);
     }
 
-    public static MediaOption$Option[] addToMenuOptionArray() {
-        MediaOption$Option[] originalArray = MediaOption$Option.$values();
+    public static MediaOption$Option[] appendOptionToArray(MediaOption$Option[] originalArray) {
+        if (originalArray == null) {
+            try {
+                originalArray = MediaOption$Option.$values();
+            } catch (Throwable ignored) {
+            }
+        }
         if (originalArray == null) {
             return new MediaOption$Option[]{MediaOption$Option.CAROUSEL_AUTO_SCROLL};
+        }
+        for (MediaOption$Option opt : originalArray) {
+            if (opt != null && ("CAROUSEL_AUTO_SCROLL".equals(opt.toString()) || opt == MediaOption$Option.CAROUSEL_AUTO_SCROLL)) {
+                return originalArray;
+            }
         }
         int originalLength = originalArray.length;
         MediaOption$Option[] newButtonArray = new MediaOption$Option[originalLength + 1];
         System.arraycopy(originalArray, 0, newButtonArray, 0, originalLength);
         newButtonArray[originalLength] = MediaOption$Option.CAROUSEL_AUTO_SCROLL;
         return newButtonArray;
+    }
+
+    public static MediaOption$Option[] addToMenuOptionArray() {
+        return appendOptionToArray(null);
     }
 
     private static Class<?> getEnumButtonClass() throws Exception {

@@ -15,6 +15,8 @@ import app.morphe.util.getReference
 import app.morphe.util.indexOfFirstInstruction
 import app.morphe.util.registersUsed
 import com.android.tools.smali.dexlib2.Opcode
+import app.morphe.patcher.patch.PatchException
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 context(patchContext: BytecodePatchContext)
@@ -24,12 +26,14 @@ fun addOverflowMenuButtonAttributes(
 ) {
     OverflowMenuButtonEnumInitialiser.apply {
         val classFields = classDef.fields
-        val field =
-            classFields
-                .first { it.type == MEDIA_OPTIONS_CLASS }
-                .toMutable()
-        field.name = buttonEnumTag
-        classFields.add(field)
+        if (classFields.none { it.name == buttonEnumTag }) {
+            val field =
+                classFields
+                    .first { it.type == MEDIA_OPTIONS_CLASS }
+                    .toMutable()
+            field.name = buttonEnumTag
+            classFields.add(field)
+        }
 
         method.apply {
             val lastInvokeDirectIndex = instructions.last { it.opcode == Opcode.INVOKE_DIRECT }.location.index
@@ -53,16 +57,24 @@ val includeButtonsInOverflowMenuArrayPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         execute {
             OverflowMenuButtonEnumInitialiser.method.apply {
-                val lastInvokeStaticIndex = instructions.last { it.opcode == Opcode.INVOKE_STATIC }.location.index
-                val arraySPutObjectIndex = lastInvokeStaticIndex - 1
+                val valuesSputIndex = instructions.indexOfFirst {
+                    it.opcode == Opcode.SPUT_OBJECT &&
+                        it.getReference<FieldReference>()?.name == "\$VALUES"
+                }
 
-                val arrayRegister = getInstruction(arraySPutObjectIndex).registersUsed[0]
+                if (valuesSputIndex == -1) {
+                    throw PatchException("Could not find \$VALUES sput-object in MediaOption\$Option.<clinit>")
+                }
+
+                val arrayRegister = getInstruction(valuesSputIndex).registersUsed[0]
 
                 addInstructions(
-                    lastInvokeStaticIndex - 1,
+                    valuesSputIndex + 1,
                     """
-                    invoke-static {}, $FEED_BUTTON_EXTENSION_CLASS->addToMenuOptionArray()[$MEDIA_OPTIONS_CLASS
+                    sget-object v$arrayRegister, $MEDIA_OPTIONS_CLASS->${"$" + "VALUES"}:[$MEDIA_OPTIONS_CLASS
+                    invoke-static {v$arrayRegister}, $FEED_BUTTON_EXTENSION_CLASS->appendOptionToArray([$MEDIA_OPTIONS_CLASS)[$MEDIA_OPTIONS_CLASS
                     move-result-object v$arrayRegister
+                    sput-object v$arrayRegister, $MEDIA_OPTIONS_CLASS->${"$" + "VALUES"}:[$MEDIA_OPTIONS_CLASS
                     """.trimIndent(),
                 )
             }
